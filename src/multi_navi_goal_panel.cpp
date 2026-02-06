@@ -1817,6 +1817,7 @@ namespace navi_multi_goals_pub_rviz_plugin {
 
     // initialize the table of pose
     void MultiNaviGoalsPanel::initPoseTable() {
+        deleteAllMark();
         ROS_INFO("Initialize");
         curGoalIdx_001 = 0, cycleCnt_001 = 0;
         curGoalIdx_002 = 0, cycleCnt_002 = 0;
@@ -1887,6 +1888,69 @@ namespace navi_multi_goals_pub_rviz_plugin {
         cycle_checkbox_006->setCheckState(Qt::Unchecked);
     }
 
+    void MultiNaviGoalsPanel::deleteAllMark() {
+        for(int i=0; i<maxNumGoal_; i++){
+            visualization_msgs::Marker marker_delete;
+            marker_delete.ns="navi_point_arrow_001";
+            marker_delete.id=i;
+            marker_delete.action = visualization_msgs::Marker::DELETE;
+            marker_pub_001.publish(marker_delete);
+            marker_delete.ns="navi_point_number_001";
+            marker_delete.action = visualization_msgs::Marker::DELETE;
+            marker_pub_001.publish(marker_delete);
+        }
+        for(int i=0; i<maxNumGoal_; i++){
+            visualization_msgs::Marker marker_delete;
+            marker_delete.ns="navi_point_arrow_002";
+            marker_delete.id=i;
+            marker_delete.action = visualization_msgs::Marker::DELETE;
+            marker_pub_002.publish(marker_delete);
+            marker_delete.ns="navi_point_number_002";
+            marker_delete.action = visualization_msgs::Marker::DELETE;
+            marker_pub_002.publish(marker_delete);
+        }
+        for(int i=0; i<maxNumGoal_; i++){
+            visualization_msgs::Marker marker_delete;
+            marker_delete.ns="navi_point_arrow_003";
+            marker_delete.id=i;
+            marker_delete.action = visualization_msgs::Marker::DELETE;
+            marker_pub_003.publish(marker_delete);
+            marker_delete.ns="navi_point_number_003";
+            marker_delete.action = visualization_msgs::Marker::DELETE;
+            marker_pub_002.publish(marker_delete);
+        }
+        for(int i=0; i<maxNumGoal_; i++){
+            visualization_msgs::Marker marker_delete;
+            marker_delete.ns="navi_point_arrow_004";
+            marker_delete.id=i;
+            marker_delete.action = visualization_msgs::Marker::DELETE;
+            marker_pub_004.publish(marker_delete);
+            marker_delete.ns="navi_point_number_004";
+            marker_delete.action = visualization_msgs::Marker::DELETE;
+            marker_pub_004.publish(marker_delete);
+        }
+        for(int i=0; i<maxNumGoal_; i++){
+            visualization_msgs::Marker marker_delete;
+            marker_delete.ns="navi_point_arrow_005";
+            marker_delete.id=i;
+            marker_delete.action = visualization_msgs::Marker::DELETE;
+            marker_pub_005.publish(marker_delete);
+            marker_delete.ns="navi_point_number_005";
+            marker_delete.action = visualization_msgs::Marker::DELETE;
+            marker_pub_005.publish(marker_delete);
+        }
+        for(int i=0; i<maxNumGoal_; i++){
+            visualization_msgs::Marker marker_delete;
+            marker_delete.ns="navi_point_arrow_006";
+            marker_delete.id=i;
+            marker_delete.action = visualization_msgs::Marker::DELETE;
+            marker_pub_006.publish(marker_delete);
+            marker_delete.ns="navi_point_number_006";
+            marker_delete.action = visualization_msgs::Marker::DELETE;
+            marker_pub_006.publish(marker_delete);
+        }
+    }
+    
     // delete marks in the map
     void MultiNaviGoalsPanel::deleteMark() {
         if (!pose_array_001.poses.empty()) {

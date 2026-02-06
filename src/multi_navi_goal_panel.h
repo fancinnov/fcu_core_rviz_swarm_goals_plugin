@@ -68,6 +68,7 @@ namespace navi_multi_goals_pub_rviz_plugin {
 
         void refreshPoseArrayTable(QTableWidget* table, const geometry_msgs::PoseArray& pose_array);
         void deleteGoalPoint();
+        void deleteAllMark();
 
         void goalCntCB(const geometry_msgs::PoseStamped::ConstPtr &pose);  //goal count sub callback function
 
