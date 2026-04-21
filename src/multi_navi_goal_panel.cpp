@@ -4,6 +4,9 @@
 
 #include <fstream>
 #include <sstream>
+#include <iomanip>
+#include <QFileDialog>
+#include <QDir>
 
 #include <QPainter>
 #include <QLineEdit>
@@ -120,6 +123,8 @@ namespace navi_multi_goals_pub_rviz_plugin {
 
         button_turnleft = new QPushButton("左转");
         button_turnright = new QPushButton("右转");
+        button_savegoals = new QPushButton("保存目标点");
+        button_loadgoals = new QPushButton("加载目标点");
         
 
         grid_layout->addWidget(button_arm, 0, 1);
@@ -138,6 +143,8 @@ namespace navi_multi_goals_pub_rviz_plugin {
 
         grid_layout->addWidget(button_turnleft, 3, 1);
         grid_layout->addWidget(button_turnright, 3, 2);
+        grid_layout->addWidget(button_savegoals, 3, 3);
+        grid_layout->addWidget(button_loadgoals, 3, 4);
 
         root_layout->addLayout(grid_layout);
 
@@ -1766,6 +1773,10 @@ namespace navi_multi_goals_pub_rviz_plugin {
         output_timer->start(200);
 
         // 设置信号与槽的连接
+        connect(button_savegoals, SIGNAL(clicked()), this,
+                SLOT(saveGoals()));
+        connect(button_loadgoals, SIGNAL(clicked()), this,
+                SLOT(loadGoals()));
         connect(output_maxNumGoal_button_, SIGNAL(clicked()), this,
                 SLOT(updateMaxNumGoal()));
         connect(output_maxNumGoal_button_, SIGNAL(clicked()), this,
@@ -1781,6 +1792,144 @@ namespace navi_multi_goals_pub_rviz_plugin {
         connect(cycle_checkbox_005, SIGNAL(clicked(bool)), this, SLOT(checkCycle005()));
         connect(cycle_checkbox_006, SIGNAL(clicked(bool)), this, SLOT(checkCycle006()));
         connect(output_timer, SIGNAL(timeout()), this, SLOT(startSpin()));
+    }
+
+    void MultiNaviGoalsPanel::saveGoals() {
+        // Ask user for a filename
+        QString fileName = QFileDialog::getSaveFileName(this, tr("Save Goals"), QDir::homePath() + "/multi_goals.txt", tr("Text Files (*.txt);;All Files (*)"));
+        if (fileName.isEmpty()) {
+            return;
+        }
+
+        std::ofstream ofs(fileName.toStdString());
+        if (!ofs.is_open()) {
+            QMessageBox::warning(this, tr("Save Error"), tr("Unable to open file for writing: %1").arg(fileName));
+            return;
+        }
+
+        auto writeArray = [&](const geometry_msgs::PoseArray &arr, const std::string &name) {
+            ofs << name << " " << arr.poses.size() << "\n";
+            for (size_t i = 0; i < arr.poses.size(); ++i) {
+                const geometry_msgs::Pose &p = arr.poses[i];
+                double yaw_rad = tf::getYaw(p.orientation);
+                double yaw_deg = yaw_rad * 180.0 / M_PI;
+                ofs << std::fixed << std::setprecision(6)
+                    << p.position.x << " "
+                    << p.position.y << " "
+                    << p.position.z << " "
+                    << yaw_deg << "\n";
+            }
+            ofs << "\n";
+        };
+
+        writeArray(pose_array_001, "DRONE_001");
+        writeArray(pose_array_002, "DRONE_002");
+        writeArray(pose_array_003, "DRONE_003");
+        writeArray(pose_array_004, "DRONE_004");
+        writeArray(pose_array_005, "DRONE_005");
+        writeArray(pose_array_006, "DRONE_006");
+
+        ofs.close();
+        QMessageBox::information(this, tr("Saved"), tr("Goals saved to %1").arg(fileName));
+    }
+
+    void MultiNaviGoalsPanel::loadGoals() {
+        QString fileName = QFileDialog::getOpenFileName(this, tr("Load Goals"), QDir::homePath(), tr("Text Files (*.txt);;All Files (*)"));
+        if (fileName.isEmpty()) {
+            return;
+        }
+
+        std::ifstream ifs(fileName.toStdString());
+        if (!ifs.is_open()) {
+            QMessageBox::warning(this, tr("Load Error"), tr("Unable to open file: %1").arg(fileName));
+            return;
+        }
+
+        // reset current data
+        initPoseTable();
+
+        std::string line;
+        while (std::getline(ifs, line)) {
+            if (line.empty()) continue;
+            std::istringstream header_ss(line);
+            std::string drone_name;
+            size_t count = 0;
+            header_ss >> drone_name >> count;
+            if (drone_name.empty()) continue;
+
+            for (size_t i = 0; i < count; ++i) {
+                std::string pose_line;
+                bool got = false;
+                while (std::getline(ifs, pose_line)) {
+                    if (!pose_line.empty()) { got = true; break; }
+                }
+                if (!got) break;
+
+                std::istringstream pose_ss(pose_line);
+                double x, y, z, yaw_deg;
+                if (!(pose_ss >> x >> y >> z >> yaw_deg)) {
+                    ROS_WARN("Invalid pose line while loading: %s", pose_line.c_str());
+                    continue;
+                }
+
+                geometry_msgs::Pose p;
+                p.position.x = x;
+                p.position.y = y;
+                p.position.z = z;
+
+                double yaw_rad = yaw_deg * M_PI / 180.0;
+                float quaternion[4];
+                mavlink_euler_to_quaternion(0.0, 0.0, yaw_rad, quaternion);
+                p.orientation.w = quaternion[0];
+                p.orientation.x = quaternion[1];
+                p.orientation.y = quaternion[2];
+                p.orientation.z = quaternion[3];
+
+                if (drone_name == "DRONE_001") {
+                    if (pose_array_001.poses.size() < static_cast<size_t>(maxNumGoal_)) {
+                        pose_array_001.poses.push_back(p);
+                        pose_array_001.header.frame_id = "map";
+                        writePose001(p);
+                    }
+                } else if (drone_name == "DRONE_002") {
+                    if (pose_array_002.poses.size() < static_cast<size_t>(maxNumGoal_)) {
+                        pose_array_002.poses.push_back(p);
+                        pose_array_002.header.frame_id = "map";
+                        writePose002(p);
+                    }
+                } else if (drone_name == "DRONE_003") {
+                    if (pose_array_003.poses.size() < static_cast<size_t>(maxNumGoal_)) {
+                        pose_array_003.poses.push_back(p);
+                        pose_array_003.header.frame_id = "map";
+                        writePose003(p);
+                    }
+                } else if (drone_name == "DRONE_004") {
+                    if (pose_array_004.poses.size() < static_cast<size_t>(maxNumGoal_)) {
+                        pose_array_004.poses.push_back(p);
+                        pose_array_004.header.frame_id = "map";
+                        writePose004(p);
+                    }
+                } else if (drone_name == "DRONE_005") {
+                    if (pose_array_005.poses.size() < static_cast<size_t>(maxNumGoal_)) {
+                        pose_array_005.poses.push_back(p);
+                        pose_array_005.header.frame_id = "map";
+                        writePose005(p);
+                    }
+                } else if (drone_name == "DRONE_006") {
+                    if (pose_array_006.poses.size() < static_cast<size_t>(maxNumGoal_)) {
+                        pose_array_006.poses.push_back(p);
+                        pose_array_006.header.frame_id = "map";
+                        writePose006(p);
+                    }
+                } else {
+                    ROS_WARN("Unknown drone section: %s", drone_name.c_str());
+                }
+            }
+        }
+
+        ifs.close();
+        markPose();
+        QMessageBox::information(this, tr("Loaded"), tr("Goals loaded from %1").arg(fileName));
     }
 
     void MultiNaviGoalsPanel::updateWall() {

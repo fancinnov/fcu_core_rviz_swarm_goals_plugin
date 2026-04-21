@@ -53,6 +53,8 @@ namespace navi_multi_goals_pub_rviz_plugin {
         
 
     protected Q_SLOTS:
+        void saveGoals();
+        void loadGoals();
         void updateWall();
         void updateMaxNumGoal();             // update max number of goal
         void computeGlobalOffset(double dx, double dy, double& out_dx, double& out_dy);
@@ -135,6 +137,7 @@ namespace navi_multi_goals_pub_rviz_plugin {
 
         QPushButton *button_arm, *button_disarm, *button_takeoff, *button_land, *button_trackfront, *button_trackdown, *button_stoptrack;
         QPushButton *button_movefront, *button_moveback, *button_moveleft, *button_moveright, *button_turnleft, *button_turnright;
+        QPushButton *button_savegoals, *button_loadgoals;
     };
 
 } // end namespace navi-multi-goals-pub-rviz-plugin
