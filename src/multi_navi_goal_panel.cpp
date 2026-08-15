@@ -11,6 +11,7 @@
 #include <QPainter>
 #include <QLineEdit>
 #include <QVBoxLayout>
+#include <QScrollArea>
 #include <QLabel>
 #include <QTimer>
 #include <QDebug>
@@ -103,7 +104,19 @@ namespace navi_multi_goals_pub_rviz_plugin {
         cmd_pub = nh_.advertise<std_msgs::Int16>("fcu_command/command",100);
 
         wall_pub_ = nh_.advertise<visualization_msgs::Marker>("wall_marker", 1);
-        QVBoxLayout *root_layout = new QVBoxLayout;
+        // Keep the panel usable when RViz is docked on displays with different
+        // resolutions.  The scroll area prevents the six waypoint tables from
+        // imposing a large minimum height on the RViz main window, while the
+        // content widget still expands to the available dock width.
+        QScrollArea *scroll_area = new QScrollArea(this);
+        scroll_area->setWidgetResizable(true);
+        scroll_area->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+        scroll_area->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+
+        QWidget *content_widget = new QWidget(scroll_area);
+        QVBoxLayout *root_layout = new QVBoxLayout(content_widget);
+        root_layout->setContentsMargins(6, 6, 6, 6);
+        root_layout->setSpacing(6);
 
         QGridLayout* grid_layout = new QGridLayout;
 
@@ -1741,19 +1754,30 @@ namespace navi_multi_goals_pub_rviz_plugin {
         poseArray_table_006 = new MyTableWidget;
         poseArray_table_006->setEditTriggers(QAbstractItemView::AnyKeyPressed | QAbstractItemView::DoubleClicked); 
 
+        const auto configureTableForResponsiveLayout = [](QTableWidget *table) {
+            table->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+            table->setMinimumHeight(120);
+        };
+        configureTableForResponsiveLayout(poseArray_table_001);
+        configureTableForResponsiveLayout(poseArray_table_002);
+        configureTableForResponsiveLayout(poseArray_table_003);
+        configureTableForResponsiveLayout(poseArray_table_004);
+        configureTableForResponsiveLayout(poseArray_table_005);
+        configureTableForResponsiveLayout(poseArray_table_006);
+
         initPoseTable();
         root_layout->addWidget(cycle_checkbox_001);
-        root_layout->addWidget(poseArray_table_001);
+        root_layout->addWidget(poseArray_table_001, 1);
         root_layout->addWidget(cycle_checkbox_002);
-        root_layout->addWidget(poseArray_table_002);
+        root_layout->addWidget(poseArray_table_002, 1);
         root_layout->addWidget(cycle_checkbox_003);
-        root_layout->addWidget(poseArray_table_003);
+        root_layout->addWidget(poseArray_table_003, 1);
         root_layout->addWidget(cycle_checkbox_004);
-        root_layout->addWidget(poseArray_table_004);
+        root_layout->addWidget(poseArray_table_004, 1);
         root_layout->addWidget(cycle_checkbox_005);
-        root_layout->addWidget(poseArray_table_005);
+        root_layout->addWidget(poseArray_table_005, 1);
         root_layout->addWidget(cycle_checkbox_006);
-        root_layout->addWidget(poseArray_table_006);
+        root_layout->addWidget(poseArray_table_006, 1);
 
         //create a manipulate layout
         QHBoxLayout *manipulate_layout = new QHBoxLayout;
@@ -1767,7 +1791,12 @@ namespace navi_multi_goals_pub_rviz_plugin {
         manipulate_layout->addWidget(output_stopNavi_button_);
         root_layout->addLayout(manipulate_layout);
 
-        setLayout(root_layout);
+        scroll_area->setWidget(content_widget);
+        QVBoxLayout *panel_layout = new QVBoxLayout(this);
+        panel_layout->setContentsMargins(0, 0, 0, 0);
+        panel_layout->addWidget(scroll_area);
+        setLayout(panel_layout);
+        setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
         // set a Qtimer to start a spin for subscriptions
         QTimer *output_timer = new QTimer(this);
         output_timer->start(200);
