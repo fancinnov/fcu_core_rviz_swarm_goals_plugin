@@ -61,7 +61,6 @@ class MultiNaviGoalsPanel : public rviz::Panel {
   static constexpr double kDefaultYawToleranceDeg = 10.0;
   static constexpr double kDefaultDwellSeconds = 0.5;
   static constexpr double kOdomStaleSeconds = 2.0;
-  static constexpr double kWaypointTimeoutSeconds = 60.0;
   static constexpr double kDefaultMoveStepM = 0.5;
   static constexpr double kDefaultTurnStepDeg = 15.0;
 

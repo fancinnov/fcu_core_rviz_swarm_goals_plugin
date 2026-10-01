@@ -38,12 +38,15 @@ constexpr double MultiNaviGoalsPanel::kDefaultPositionToleranceM;
 constexpr double MultiNaviGoalsPanel::kDefaultYawToleranceDeg;
 constexpr double MultiNaviGoalsPanel::kDefaultDwellSeconds;
 constexpr double MultiNaviGoalsPanel::kOdomStaleSeconds;
-constexpr double MultiNaviGoalsPanel::kWaypointTimeoutSeconds;
 constexpr double MultiNaviGoalsPanel::kDefaultMoveStepM;
 constexpr double MultiNaviGoalsPanel::kDefaultTurnStepDeg;
 
 namespace {
 constexpr double kPi = 3.14159265358979323846;
+
+// Applies to all drones: true checks XY only, ignoring Z and yaw;
+// false checks XYZ distance and yaw tolerance.
+bool g_ignore_z_for_arrival = true;
 
 QString topicFor(const QString& prefix, std::size_t index) {
   return QString("%1_%2").arg(prefix).arg(static_cast<int>(index + 1), 3, 10, QChar('0'));
@@ -459,9 +462,6 @@ void MultiNaviGoalsPanel::advanceMission(std::size_t index, const ros::Time& now
   if (drone.mission_state != MissionState::Executing) return;
   if (!hasFreshOdometry(drone, now)) { drone.error = tr("里程计不可用或已过期"); updateStatus(index); return; }
   if (drone.waypoint_sent_at.isZero()) dispatchCurrentWaypoint(index);
-  if ((now - drone.waypoint_sent_at).toSec() > kWaypointTimeoutSeconds) {
-    drone.mission_state = MissionState::Error; drone.error = tr("航点超时"); updateStatus(index); return;
-  }
   const geometry_msgs::Pose& waypoint = drone.waypoints.poses[drone.current_waypoint];
   if (!isAtWaypoint(drone, waypoint)) { drone.within_tolerance_since = ros::Time(); return; }
   if (drone.within_tolerance_since.isZero()) { drone.within_tolerance_since = now; return; }
@@ -482,8 +482,9 @@ bool MultiNaviGoalsPanel::isAtWaypoint(const DroneState& drone, const geometry_m
   const geometry_msgs::Pose& actual = drone.odometry.pose.pose;
   const double dx = actual.position.x - waypoint.position.x;
   const double dy = actual.position.y - waypoint.position.y;
-  const double dz = actual.position.z - waypoint.position.z;
-  const double distance = std::sqrt(dx * dx + dy * dy + dz * dz);
+  const double dz = g_ignore_z_for_arrival ? 0.0 : actual.position.z - waypoint.position.z;
+  const double distance = std::hypot(std::hypot(dx, dy), dz);
+  if (g_ignore_z_for_arrival) return distance <= position_tolerance_spin_->value();
   const double yaw_error = std::abs(normalizeAngle(tf::getYaw(actual.orientation) - tf::getYaw(waypoint.orientation)));
   return distance <= position_tolerance_spin_->value() &&
          yaw_error <= yaw_tolerance_spin_->value() * kPi / 180.0;
